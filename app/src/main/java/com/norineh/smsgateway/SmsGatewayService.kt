@@ -13,31 +13,32 @@ import android.telephony.SmsManager
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class SmsGatewayService : Service() {
 
-    private val scope =
-        CoroutineScope(
-            SupervisorJob() + Dispatchers.IO
-        )
+    private val serviceScope =
+        CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private val api =
-        ApiClient()
+    private val api = ApiClient()
 
-    private val channelId =
-        "norineh_sms_gateway"
+    private val channelId = "norineh_sms_gateway"
 
     override fun onCreate() {
-
         super.onCreate()
 
         createChannel()
 
-        val notification =
-            notification(
-                "در حال بررسی صف پیامک"
-            )
+        val notification = notification(
+            "در حال بررسی صف پیامک"
+        )
 
         if (Build.VERSION.SDK_INT >= 29) {
 
@@ -57,19 +58,18 @@ class SmsGatewayService : Service() {
             )
         }
 
-        scope.launch {
+        serviceScope.launch {
             pollingLoop()
         }
     }
 
     private suspend fun pollingLoop() {
 
-        while (isActive) {
+        while (serviceScope.isActive) {
 
             try {
 
-                val jobs =
-                    api.getPending()
+                val jobs = api.getPending()
 
                 if (jobs.isEmpty()) {
 
@@ -81,7 +81,7 @@ class SmsGatewayService : Service() {
 
                     for (job in jobs) {
 
-                        if (!isActive) {
+                        if (!serviceScope.isActive) {
                             break
                         }
 
@@ -96,15 +96,11 @@ class SmsGatewayService : Service() {
                 )
             }
 
-            delay(
-                Config.POLL_INTERVAL_MS
-            )
+            delay(Config.POLL_INTERVAL_MS)
         }
     }
 
-    private fun sendJob(
-        job: SmsJob
-    ) {
+    private fun sendJob(job: SmsJob) {
 
         if (
             ActivityCompat.checkSelfPermission(
@@ -122,13 +118,10 @@ class SmsGatewayService : Service() {
 
         try {
 
-            val smsManager =
-                SmsManager.getDefault()
+            val smsManager = SmsManager.getDefault()
 
             val parts =
-                smsManager.divideMessage(
-                    job.message
-                )
+                smsManager.divideMessage(job.message)
 
             if (parts.size == 1) {
 
@@ -246,7 +239,7 @@ class SmsGatewayService : Service() {
 
     override fun onDestroy() {
 
-        scope.cancel()
+        serviceScope.cancel()
 
         super.onDestroy()
     }
