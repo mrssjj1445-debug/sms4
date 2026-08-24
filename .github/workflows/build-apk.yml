@@ -1,10 +1,11 @@
 name: Build Norineh SMS Gateway APK
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - main
+
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -14,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v5
 
       - name: Setup JDK 17
@@ -38,7 +39,8 @@ jobs:
           gradle-version: "8.10.2"
 
       - name: Build APK
-        run: gradle :app:assembleDebug --stacktrace
+        run: |
+          gradle :app:assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
