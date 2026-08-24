@@ -63,42 +63,50 @@ class SmsGatewayService : Service() {
         }
     }
 
-    private suspend fun pollingLoop() {
+private suspend fun pollingLoop() {
 
-        while (serviceScope.isActive) {
+    while (serviceScope.isActive) {
 
-            try {
+        try {
 
-                val jobs = api.getPending()
+            updateNotification(
+                "در حال اتصال به norineh.com..."
+            )
 
-                if (jobs.isEmpty()) {
+            val jobs = api.getPending()
 
-                    updateNotification(
-                        "Gateway فعال است؛ صف خالی است"
-                    )
-
-                } else {
-
-                    for (job in jobs) {
-
-                        if (!serviceScope.isActive) {
-                            break
-                        }
-
-                        sendJob(job)
-                    }
-                }
-
-            } catch (_: Exception) {
+            if (jobs.isEmpty()) {
 
                 updateNotification(
-                    "خطای ارتباط با سرور؛ تلاش مجدد"
+                    "اتصال به سایت موفق بود؛ صف خالی است"
                 )
+
+            } else {
+
+                updateNotification(
+                    "اتصال موفق؛ ${jobs.size} پیام در صف است"
+                )
+
+                for (job in jobs) {
+
+                    if (!serviceScope.isActive) {
+                        break
+                    }
+
+                    sendJob(job)
+                }
             }
 
-            delay(Config.POLL_INTERVAL_MS)
+        } catch (e: Exception) {
+
+            updateNotification(
+                "خطای اتصال: ${e.message ?: "Unknown error"}"
+            )
         }
+
+        delay(Config.POLL_INTERVAL_MS)
     }
+}
 
     private fun sendJob(job: SmsJob) {
 
